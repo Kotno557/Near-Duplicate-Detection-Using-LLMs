@@ -2,12 +2,10 @@ import base64
 import os
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
-# ==========================================
-# 1. 系統定義 (System Prompt)
-# ==========================================
-SYSTEM_PROMPT_TEXT = """
+# --- prompts ---
+SYSTEM_PROMPT_TEXT: str = """
 # Role
-You are an expert Software Test Engineer. Your goal is to detect "Functional Near-Duplicates" based on the ICSE '20 paper standards.
+You are an expert Software Test Engineer. Your goal is to detect "Functional Near-Duplicates".
 
 # Classification Rules
 1. [Clone]: Pixels match almost perfectly.
@@ -16,70 +14,89 @@ You are an expert Software Test Engineer. Your goal is to detect "Functional Nea
    - Nd2 (Dynamic Data): CRITICAL. The form/layout is identical, but text values differ (e.g., "User: Alex" vs "User: Ben").
    - Nd3 (List Expansion): A list/table has more rows, but the columns and data type are identical.
 3. [Distinct]: Functional layout changes, new widgets, or new page states (e.g. List vs Detail view).
-
-# Output Requirement
-You must output a JSON object: {"classification": "...", "sub_type": "...", "reasoning": "..."}
 """
 
-# ==========================================
-# 2. 輔助工具：讀取圖片
-# ==========================================
+#
+# # Output Requirement
+# You must output a JSON object: {"classification": "...", "sub_type": "...", "reasoning": "..."} 
+#
+
+def get_few_shot_messages(ref_dir: str = "reference_images"):
+    messages = []
+
+    # Nd1 (Background Changes)
+    messages.extend(create_example_pair(
+        ref_dir, "fig2_nd1_a.png", "fig2_nd1_b.png",
+        title="Homepage with Background Change",
+        expected_json='''{
+            "classification": "Near-Duplicate",
+            "sub_type": "Nd1",
+            "reasoning": "The main content text and layout are identical. Only the top banner image has changed (from 'Statistics' text to a person drawing on a whiteboard). This is a cosmetic change."
+        }'''
+    ))
+
+    # Nd2 (Dynamic Data)
+    messages.extend(create_example_pair(
+        ref_dir, "fig2_nd2_a.png", "fig2_nd2_b.png",
+        title="Form Input Values (Pet Clinic)",
+        expected_json='''{
+            "classification": "Near-Duplicate",
+            "sub_type": "Nd2",
+            "reasoning": "The form structure (Owner, Name, Birth Date inputs) is strictly preserved. Only the specific data values are different ('Carlos Esteban' vs 'Betty Davis'). This is Dynamic Data."
+        }'''
+    ))
+
+    # Nd3 (List Expansion)
+    messages.extend(create_example_pair(
+        ref_dir, "fig2_nd3_a.png", "fig2_nd3_b.png",
+        title="Table Row Expansion",
+        expected_json='''{
+            "classification": "Near-Duplicate",
+            "sub_type": "Nd3",
+            "reasoning": "The second image adds a new row (for 'Rosy') to the 'Pets and Visits' table. The table columns and functionality (Edit/Add buttons) remain unchanged. Adding rows is List Expansion, not a new functional state."
+        }'''
+    ))
+
+    # Distinct (Popup)
+    messages.extend(create_example_pair(
+        ref_dir, "ref_distinct_modal_a.png", "ref_distinct_modal_b.png",
+        title="Page vs Page with Login Modal",
+        expected_json='''{
+            "classification": "Distinct",
+            "sub_type": "None",
+            "reasoning": "Although the background is similar, Image B contains a new 'Login Modal' that blocks the underlying content. This exposes new actionable widgets (Username/Password fields) and represents a different state."
+        }'''
+    ))
+
+    if not messages:
+        print("[Warning] No reference images found. Running in Zero-Shot mode")
+    
+    return messages
+
+
+# --- tool funcitons ---
 def encode_image(image_path: str) -> str | None:
-    """將圖片路徑轉為 Base64，若檔案不存在回傳 None"""
     if not os.path.exists(image_path):
-        print(f"⚠️ Warning: Reference image not found: {image_path}")
+        print(f"[Warning] Reference image not found: {image_path}")
         return None
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
-
-# ==========================================
-# 3. 建構 Few-Shot 歷史訊息 (核心邏輯)
-# ==========================================
-def get_few_shot_messages(ref_dir: str = "reference_images"):
+    
+def create_example_pair(ref_dir, img_a_name, img_b_name, title, expected_json):
     """
-    自動從 reference_images 資料夾讀取圖片，並組合成 Few-Shot 教學範例。
+    Build HumanMessage/AIMessage 
     """
-    # 預先定義好的範例路徑
-    # 這裡你需要準備實際的圖片 (Nd2_A, Nd2_B, Nd3_A, Nd3_B)
-    img_nd2_a = encode_image(os.path.join(ref_dir, "ref_nd2_a.png"))
-    img_nd2_b = encode_image(os.path.join(ref_dir, "ref_nd2_b.png"))
-    img_nd3_a = encode_image(os.path.join(ref_dir, "ref_nd3_a.png"))
-    img_nd3_b = encode_image(os.path.join(ref_dir, "ref_nd3_b.png"))
+    img_a = encode_image(os.path.join(ref_dir, img_a_name))
+    img_b = encode_image(os.path.join(ref_dir, img_b_name))
+    
+    if not img_a or not img_b:
+        return [] # no picture then skip
 
-    messages = []
-
-    # --- 範例 1: Nd2 (Dynamic Data) ---
-    # 如果圖片讀取成功，才加入這個範例
-    if img_nd2_a and img_nd2_b:
-        messages.extend([
-            HumanMessage(content=[
-                {"type": "text", "text": "Example 1: Compare these two images (Pet Clinic Form). Are they Distinct?"},
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_nd2_a}"}}, 
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_nd2_b}"}}
-            ]),
-            AIMessage(content='''{
-                "classification": "Near-Duplicate",
-                "sub_type": "Nd2",
-                "reasoning": "The form structure is identical. Only the text values ('Carlos' vs 'Betty') are different. This is Dynamic Data."
-            }''')
-        ])
-
-    # --- 範例 2: Nd3 (List Expansion) ---
-    if img_nd3_a and img_nd3_b:
-        messages.extend([
-            HumanMessage(content=[
-                {"type": "text", "text": "Example 2: Compare these two images (Visit List)."},
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_nd3_a}"}},
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_nd3_b}"}}
-            ]),
-            AIMessage(content='''{
-                "classification": "Near-Duplicate",
-                "sub_type": "Nd3",
-                "reasoning": "The second image adds a new row to the table. Since the table functionality is already present, adding a row does not expose new functionality type."
-            }''')
-        ])
-        
-    if not messages:
-        print("ℹ️ Note: No valid reference images found. Running in Zero-Shot mode.")
-
-    return messages
+    return [
+        HumanMessage(content=[
+            {"type": "text", "text": f"Reference Case: {title}"},
+            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_a}"}},
+            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b}"}}
+        ]),
+        AIMessage(content=expected_json)
+    ]

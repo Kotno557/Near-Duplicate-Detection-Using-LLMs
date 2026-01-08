@@ -1,95 +1,118 @@
-import os
+import time
+import json
 from typing import Literal, Optional
-from langchain_openai import ChatOpenAI
+from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
-# 匯入我們定義好的模組
+# --- Few-Shot prompt ---
 from prompt_definitions import SYSTEM_PROMPT_TEXT, get_few_shot_messages, encode_image
 
-# ==========================================
-# 1. 設定與 Pydantic 結構
-# ==========================================
+
+# --- pydantic ---
 OLLAMA_CONFIG = {
-    "base_url": "https://17c6fa445bc9.ngrok-free.app/v1",  # 你的 Ngrok URL (加上 /v1)
+    "base_url": "https://17c6fa445bc9.ngrok-free.app/", 
     "api_key": "ollama",
-    "model": "gpt-oss:120b",  # 記得確認 Ollama list 中的名稱
-    "temperature": 0.0
+    "model": "qwen3-vl:235b-a22b",
+    "temperature": 0.0 # focus
 }
 
 class ComparisonResult(BaseModel):
     classification: Literal["Clone", "Near-Duplicate", "Distinct"]
     sub_type: Optional[Literal["None", "Nd1", "Nd2", "Nd3"]] = Field("None")
-    confidence_score: int
     reasoning: str
 
-# ==========================================
-# 2. 主邏輯
-# ==========================================
-def analyze_screenshots(img_path_a: str, img_path_b: str):
-    print(f"🚀 Connecting to Ollama at {OLLAMA_CONFIG['base_url']}...")
-    
-    llm = ChatOpenAI(
-        base_url=OLLAMA_CONFIG["base_url"],
-        api_key=OLLAMA_CONFIG["api_key"],
-        model=OLLAMA_CONFIG["model"],
-        temperature=OLLAMA_CONFIG["temperature"]
-    )
-    
-    # 綁定結構化輸出 (Structured Output)
-    structured_llm = llm.with_structured_output(ComparisonResult)
 
-    # 讀取本次目標圖片
+# --- main logic ---
+def analyze_screenshots(img_path_a: str, img_path_b: str):
+    print(f"[Info] Connecting to Ollama at \"{OLLAMA_CONFIG['base_url']}\" using {OLLAMA_CONFIG['model']} model ...")
+    
+    # ollama llm model
+    llm = ChatOllama(
+        base_url=OLLAMA_CONFIG["base_url"],
+        model=OLLAMA_CONFIG["model"],
+        temperature=OLLAMA_CONFIG["temperature"] # focus
+    )
+
+    # read target screenshot
     target_a = encode_image(img_path_a)
     target_b = encode_image(img_path_b)
-    
     if not target_a or not target_b:
-        print("❌ Error: Target images not found.")
+        print("\033[91m[Error]\033[0m Target images not found.")
         return
 
-    # --- 構建 Prompt 流程 (Pipeline) ---
+    # build prompt pipeline
     messages = []
     
-    # A. 系統提示
+    # inject system prompt
     messages.append(SystemMessage(content=SYSTEM_PROMPT_TEXT))
     
-    # B. 注入 Few-Shot 範例 (從 prompt_definitions 自動載入)
-    # 這一步會自動去讀取 reference_images/ 下的圖片
+    # inject Few-Shot prompt 
     messages.extend(get_few_shot_messages(ref_dir="reference_images"))
     
-    # C. 放入本次 User 查詢
+    # build search messages with JSON requirement
+    json_schema = {
+        "classification": "Clone | Near-Duplicate | Distinct",
+        "sub_type": "None | Nd1 | Nd2 | Nd3",
+        "reasoning": "string"
+    }
     messages.append(HumanMessage(
         content=[
-            {"type": "text", "text": "Now, analyze these two new screenshots based on the logic above."},
+           #{"type": "text", "text": f"Now, analyze these two new screenshots based on the logic above. You MUST respond with ONLY a valid JSON object (no markdown, no explanations) using this exact schema: {json.dumps(json_schema)}"},
+            {"type": "text", "text": f"Now, analyze these two new screenshots based on the logic above."},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{target_a}"}},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{target_b}"}}
         ]
     ))
 
-    # 執行
-    print(f"🔍 Analyzing {img_path_a} vs {img_path_b} ...")
+    # invoke llm to analyzing
+    print(f"[Info] Analyzing {img_path_a} vs {img_path_b} ...")
+    response = None
     try:
-        result = structured_llm.invoke(messages)
-        # 確保回傳的是 ComparisonResult 物件
-        if isinstance(result, dict):
-            result = ComparisonResult(**result)
+        response = llm.invoke(messages)
+        response_text = response.content if isinstance(response.content, str) else str(response.content)
+        response_text = response_text.strip()
+        
+        # parse JSON response (handle possible markdown)
+        if response_text.startswith("```json"):
+            response_text = response_text.split("```json")[1].split("```")[0].strip()
+        elif response_text.startswith("```"):
+            response_text = response_text.split("```")[1].split("```")[0].strip()
+        
+        result_dict = json.loads(response_text)
+        
+        # Add default reasoning if missing
+        if 'reasoning' not in result_dict:
+            result_dict['reasoning'] = f"No reasoning"
+
+        result = ComparisonResult(**result_dict)
         return result
     except Exception as e:
-        print(f"❌ Analysis Failed: {e}")
+        print(f"\033[91m[Error]\033[0m Analysis Failed: {e}")
+        if response:
+            print("\033[93m[DEBUG]\033[0m Raw Response:")
+            print("-"*60)
+            print(response)
+            print("="*60 + "\n")
         return None
 
-# ==========================================
-# 3. 執行入口
-# ==========================================
+
+# --- code main entry ---
 if __name__ == "__main__":
-    # 確保你有建立 reference_images 資料夾並放入參考圖
-    # 確保你有建立 test_images 資料夾並放入測試圖
+    # ensure reference_images folder exsist
+    # ensure test_images folder exsist
     
+    # run analyzing and return result
+    start_time = time.time()
     result = analyze_screenshots("test_images/page_v1.png", "test_images/page_v2.png")
+    end_time = time.time()
+    elapsed_time = end_time - start_time
     
+    print("=" * 60 + "\n")
     if result:
-        print("\n" + "="*50)
-        print(f"📊 Result: {result.classification}")
-        print(f"🏷️ Type:   {result.sub_type}")
-        print(f"📝 Reason: {result.reasoning}")
-        print("="*50)
+        print(f"\033[92m[Success]\033[0m")
+        print(f"Result: {result.classification}")
+        print(f"Type  : {result.sub_type}")
+        print(f"Reason: \"{result.reasoning}\"")
+    print(f"Time  : {elapsed_time:.2f} seconds")
+    print("=" * 60 + "\n")
