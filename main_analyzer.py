@@ -14,7 +14,7 @@ from prompt_definitions import SYSTEM_PROMPT_TEXT, get_few_shot_messages, encode
 OLLAMA_CONFIG = {
     "base_url": "https://17c6fa445bc9.ngrok-free.app/", 
     "api_key": "ollama",
-    "model": "qwen3-vl:235b-a22b",
+    "model": "gemma3:27b",
     "temperature": 0.0 # focus
 }
 
