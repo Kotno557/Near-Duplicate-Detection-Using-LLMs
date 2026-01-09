@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from prompt_definitions import SYSTEM_PROMPT_TEXT, get_few_shot_messages, encode_image
 
 
-# --- pydantic ---
+# --- ollama config ---
 OLLAMA_CONFIG = {
     "base_url": "https://17c6fa445bc9.ngrok-free.app/", 
     "api_key": "ollama",
@@ -17,6 +17,8 @@ OLLAMA_CONFIG = {
     "temperature": 0.0 # focus
 }
 
+
+# --- pydantic ---
 class ComparisonResult(BaseModel):
     classification: Literal["Clone", "Near-Duplicate", "Distinct"]
     sub_type: Optional[Literal["None", "Nd1", "Nd2", "Nd3"]] = Field("None")
