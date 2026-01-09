@@ -223,3 +223,5 @@ __marimo__/
 .streamlit/secrets.toml
 
 .DS_Store
+test_images/
+*.db

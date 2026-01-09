@@ -1,5 +1,6 @@
 import time
 import json
+import sys
 from typing import Literal, Optional
 from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -52,15 +53,9 @@ def analyze_screenshots(img_path_a: str, img_path_b: str):
     # inject Few-Shot prompt 
     messages.extend(get_few_shot_messages(ref_dir="reference_images"))
     
-    # build search messages with JSON requirement
-    json_schema = {
-        "classification": "Clone | Near-Duplicate | Distinct",
-        "sub_type": "None | Nd1 | Nd2 | Nd3",
-        "reasoning": "string"
-    }
+    # build request message
     messages.append(HumanMessage(
         content=[
-           #{"type": "text", "text": f"Now, analyze these two new screenshots based on the logic above. You MUST respond with ONLY a valid JSON object (no markdown, no explanations) using this exact schema: {json.dumps(json_schema)}"},
             {"type": "text", "text": f"Now, analyze these two new screenshots based on the logic above."},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{target_a}"}},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{target_b}"}}
@@ -104,9 +99,17 @@ if __name__ == "__main__":
     # ensure reference_images folder exsist
     # ensure test_images folder exsist
     
+    # Check command line arguments
+    if len(sys.argv) != 3:
+        print("[info] Usage: python3 main_analyzer.py <image_a> <image_b>")
+        print("[info] Example: python3 main_analyzer.py test_images/self_test_a.png test_images/self_test_b.png")
+        sys.exit(1)
+    img_path_a = sys.argv[1]
+    img_path_b = sys.argv[2]
+
     # run analyzing and return result
     start_time = time.time()
-    result = analyze_screenshots("test_images/page_v1.png", "test_images/page_v2.png")
+    result = analyze_screenshots(img_path_a, img_path_b)
     end_time = time.time()
     elapsed_time = end_time - start_time
     

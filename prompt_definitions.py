@@ -14,12 +14,16 @@ You are an expert Software Test Engineer. Your goal is to detect "Functional Nea
    - Nd2 (Dynamic Data): CRITICAL. The form/layout is identical, but text values differ (e.g., "User: Alex" vs "User: Ben").
    - Nd3 (List Expansion): A list/table has more rows, but the columns and data type are identical.
 3. [Distinct]: Functional layout changes, new widgets, or new page states (e.g. List vs Detail view).
-"""
 
-#
-# # Output Requirement
-# You must output a JSON object: {"classification": "...", "sub_type": "...", "reasoning": "..."} 
-#
+# Output Requirement
+Please try to output a JSON object in this format:
+{
+    "classification": "Clone" | "Near-Duplicate" | "Distinct",
+    "sub_type": "None" | "Nd1" | "Nd2" | "Nd3",
+    "reasoning": "Brief explanation of why you chose this classification"
+}
+If you cannot output JSON, please provide your answer in your preferred format.
+"""
 
 def get_few_shot_messages(ref_dir: str = "reference_images"):
     messages = []
