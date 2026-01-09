@@ -5,7 +5,7 @@ from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
-# --- Few-Shot prompt ---
+# --- Systemp prompt & Few-Shot prompt ---
 from prompt_definitions import SYSTEM_PROMPT_TEXT, get_few_shot_messages, encode_image
 
 
