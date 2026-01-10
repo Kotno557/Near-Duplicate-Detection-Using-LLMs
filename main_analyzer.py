@@ -1,6 +1,7 @@
 import time
 import json
 import sys
+import concurrent.futures
 from typing import Literal, Optional
 from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -14,8 +15,9 @@ from prompt_definitions import SYSTEM_PROMPT_TEXT, get_few_shot_messages, encode
 OLLAMA_CONFIG = {
     "base_url": "https://17c6fa445bc9.ngrok-free.app/", 
     "api_key": "ollama",
-    "model": "gemma3:27b",
-    "temperature": 0.0 # focus
+    "model": "qwen3-vl:32b",
+    "temperature": 0.0, # focus
+    "timeout": 360 # second
 }
 
 
@@ -34,7 +36,7 @@ def analyze_screenshots(img_path_a: str, img_path_b: str):
     llm = ChatOllama(
         base_url=OLLAMA_CONFIG["base_url"],
         model=OLLAMA_CONFIG["model"],
-        temperature=OLLAMA_CONFIG["temperature"] # focus
+        temperature=OLLAMA_CONFIG["temperature"], # focus
     )
 
     # read target screenshot
@@ -73,7 +75,14 @@ def analyze_screenshots(img_path_a: str, img_path_b: str):
     print(f"[Info] Analyzing {img_path_a} vs {img_path_b} ...")
     response = None
     try:
-        response = llm.invoke(messages)
+        # execute with timeout mechanism
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(llm.invoke, messages)
+            try:
+                response = future.result(timeout=OLLAMA_CONFIG["timeout"])
+            except concurrent.futures.TimeoutError:
+                raise TimeoutError(f"Analysis exceeded timeout of {OLLAMA_CONFIG['timeout']} seconds")
+        
         response_text = response.content if isinstance(response.content, str) else str(response.content)
         response_text = response_text.strip()
         
@@ -140,7 +149,7 @@ if __name__ == "__main__":
         print("[Example] python3 main_analyzer.py test_images/self_test_a.png test_images/self_test_b.png")
         print("[Info] Using default test_images/addressbook/index.png vs test_images/addressbook/state3.png")
         img_path_a = "test_images/addressbook/index.png"
-        img_path_b = "test_images/addressbook/state3.png"
+        img_path_b = "test_images/addressbook/state239.png"
     else:
         img_path_a = sys.argv[1]
         img_path_b = sys.argv[2]
