@@ -99,6 +99,34 @@ def analyze_screenshots(img_path_a: str, img_path_b: str):
             print(response)
             print("="*60 + "\n")
         return None
+    
+def main(img_path_a: str, img_path_b: str):
+    # run analyzing and return result
+    start_time = time.time()
+    result = analyze_screenshots(img_path_a, img_path_b)
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    
+    # print resault
+    print("=" * 60 + "\n")
+    if result:
+        print(f"\033[92m[Success]\033[0m")
+        print(f"Result: {result.classification}")
+        print(f"Type  : {result.sub_type}")
+        print(f"Reason: \"{result.reasoning}\"")
+    print(f"Time  : {elapsed_time:.2f} seconds")
+    print("=" * 60 + "\n")
+
+    # return dict
+    if result:
+        return {
+            "classification": result.classification,
+            "sub_type": result.sub_type,
+            "reasoning": result.reasoning,
+            "execution_time": elapsed_time
+        }
+    else:
+        return None
 
 
 # --- code main entry ---
@@ -117,17 +145,4 @@ if __name__ == "__main__":
         img_path_a = sys.argv[1]
         img_path_b = sys.argv[2]
 
-    # run analyzing and return result
-    start_time = time.time()
-    result = analyze_screenshots(img_path_a, img_path_b)
-    end_time = time.time()
-    elapsed_time = end_time - start_time
-    
-    print("=" * 60 + "\n")
-    if result:
-        print(f"\033[92m[Success]\033[0m")
-        print(f"Result: {result.classification}")
-        print(f"Type  : {result.sub_type}")
-        print(f"Reason: \"{result.reasoning}\"")
-    print(f"Time  : {elapsed_time:.2f} seconds")
-    print("=" * 60 + "\n")
+    main(img_path_a, img_path_b)
