@@ -56,11 +56,18 @@ def analyze_screenshots(img_path_a: str, img_path_b: str):
     # build request message
     messages.append(HumanMessage(
         content=[
-            {"type": "text", "text": f"Now, analyze these two new screenshots based on the logic above."},
+            {"type": "text", "text": f"Now, analyze these two new screenshots."},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{target_a}"}},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{target_b}"}}
         ]
     ))
+
+    # test few shot 
+    # messages.append(HumanMessage(
+    #     content=[
+    #         {"type": "text", "text": f"請問你接收到了幾個範例？"},
+    #     ]
+    # ))
 
     # invoke llm to analyzing
     print(f"[Info] Analyzing {img_path_a} vs {img_path_b} ...")
@@ -101,11 +108,14 @@ if __name__ == "__main__":
     
     # Check command line arguments
     if len(sys.argv) != 3:
-        print("[info] Usage: python3 main_analyzer.py <image_a> <image_b>")
-        print("[info] Example: python3 main_analyzer.py test_images/self_test_a.png test_images/self_test_b.png")
-        sys.exit(1)
-    img_path_a = sys.argv[1]
-    img_path_b = sys.argv[2]
+        print("[Warning] Usage: python3 main_analyzer.py <image_a> <image_b>")
+        print("[Example] python3 main_analyzer.py test_images/self_test_a.png test_images/self_test_b.png")
+        print("[Info] Using default test_images/addressbook/index.png vs test_images/addressbook/state3.png")
+        img_path_a = "test_images/addressbook/index.png"
+        img_path_b = "test_images/addressbook/state3.png"
+    else:
+        img_path_a = sys.argv[1]
+        img_path_b = sys.argv[2]
 
     # run analyzing and return result
     start_time = time.time()

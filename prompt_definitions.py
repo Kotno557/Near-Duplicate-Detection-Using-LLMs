@@ -85,11 +85,15 @@ def encode_image(image_path: str) -> str | None:
         return None
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
-    
+
+FEW_SHOT_COUNTER: int = 0
 def create_example_pair(ref_dir, img_a_name, img_b_name, title, expected_json):
     """
     Build HumanMessage/AIMessage 
     """
+    global FEW_SHOT_COUNTER 
+    FEW_SHOT_COUNTER += 1
+    
     img_a = encode_image(os.path.join(ref_dir, img_a_name))
     img_b = encode_image(os.path.join(ref_dir, img_b_name))
     
@@ -98,7 +102,7 @@ def create_example_pair(ref_dir, img_a_name, img_b_name, title, expected_json):
 
     return [
         HumanMessage(content=[
-            {"type": "text", "text": f"Reference Case: {title}"},
+            {"type": "text", "text": f"Reference Case {FEW_SHOT_COUNTER}: {title}"},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_a}"}},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b}"}}
         ]),
