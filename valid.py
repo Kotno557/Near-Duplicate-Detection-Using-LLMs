@@ -15,7 +15,7 @@ DB_CONFIG: dict[str, str] = {
     "table_origin": "nearduplicates",
     "table_llm": "llm_nearduplicates"
 }
-MAX_DETECTION_COUNT: int = 200
+MAX_DETECTION_COUNT: int = 1000
 
 
 # --- code main entry ---
@@ -27,6 +27,7 @@ if __name__ == "__main__":
     # create llm_nearduplicates table if not exists
     cursor.execute(f'''
         CREATE TABLE IF NOT EXISTS {DB_CONFIG['table_llm']} (
+            id INTEGER PRIMARY KEY,
             appname TEXT,
             state1 TEXT,
             state2 TEXT,
@@ -45,11 +46,19 @@ if __name__ == "__main__":
     
     # transform to dict
     rows_dict = [dict(zip(columns, row)) for row in rows]
-    print(rows_dict[0])
-    print(len(rows_dict))
+
+    # get existing ids from llm_nearduplicates table
+    cursor.execute(f"SELECT id FROM {DB_CONFIG['table_llm']}")
+    existing_ids = set(row[0] for row in cursor.fetchall())
 
     # run main analyzer.py
     for i in range(0, min(len(rows_dict), MAX_DETECTION_COUNT)):
+        # check if id already exists
+        record_id = i
+        if record_id in existing_ids:
+            print(f"\n[{i+1}/{min(MAX_DETECTION_COUNT, len(rows_dict))}] Skipping: ID {record_id} already exists")
+            continue
+        
         appname: str = rows_dict[i]["appname"]
         img_a: str = f"test_images/{appname}/{rows_dict[i]["state1"]}.png"
         img_b: str = f"test_images/{appname}/{rows_dict[i]["state2"]}.png"
@@ -74,9 +83,10 @@ if __name__ == "__main__":
                 # insert result into llm_nearduplicates table
                 cursor.execute(f'''
                     INSERT INTO {DB_CONFIG['table_llm']} 
-                    (appname, state1, state2, classification, sub_type, reasoning, execution_time)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    (id, appname, state1, state2, classification, sub_type, reasoning, execution_time)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
+                    record_id,
                     rows_dict[i]["appname"],
                     rows_dict[i]['state1'],
                     rows_dict[i]['state2'],
