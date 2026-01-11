@@ -3,6 +3,7 @@ import json
 import sys
 import concurrent.futures
 from typing import Literal, Optional
+from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
@@ -13,7 +14,7 @@ from prompt_definitions import SYSTEM_PROMPT_TEXT, get_few_shot_messages, encode
 
 # --- ollama config ---
 OLLAMA_CONFIG = {
-    "base_url": "https://17c6fa445bc9.ngrok-free.app/", 
+    "base_url": "https://17c6fa445bc9.ngrok-free.app/v1", 
     "api_key": "ollama",
     "model": "qwen3-vl:32b",
     "temperature": 0.0, # focus
@@ -32,11 +33,22 @@ class ComparisonResult(BaseModel):
 def analyze_screenshots(img_path_a: str, img_path_b: str):
     print(f"[Info] Connecting to Ollama at \"{OLLAMA_CONFIG['base_url']}\" using {OLLAMA_CONFIG['model']} model ...")
     
-    # ollama llm model
-    llm = ChatOllama(
+    # ollama llm model (ChatOllama)
+    # llm = ChatOllama(
+    #     base_url=OLLAMA_CONFIG["base_url"],
+    #     model=OLLAMA_CONFIG["model"],
+    #     temperature=OLLAMA_CONFIG["temperature"], # focus
+    #     num_ctx= 32768
+    # )
+
+    # ollama llm model (ChatOpenAI)
+    llm = ChatOpenAI(
         base_url=OLLAMA_CONFIG["base_url"],
+        api_key=OLLAMA_CONFIG["api_key"],
         model=OLLAMA_CONFIG["model"],
-        temperature=OLLAMA_CONFIG["temperature"], # focus
+        temperature=OLLAMA_CONFIG["temperature"],
+        timeout=OLLAMA_CONFIG["timeout"],
+        max_retries=0
     )
 
     # read target screenshot
@@ -53,7 +65,7 @@ def analyze_screenshots(img_path_a: str, img_path_b: str):
     messages.append(SystemMessage(content=SYSTEM_PROMPT_TEXT))
     
     # inject Few-Shot prompt 
-    messages.extend(get_few_shot_messages(ref_dir="reference_images"))
+    # messages.extend(get_few_shot_messages(ref_dir="reference_images"))
     
     # build request message
     messages.append(HumanMessage(
@@ -149,7 +161,7 @@ if __name__ == "__main__":
         print("[Example] python3 main_analyzer.py test_images/self_test_a.png test_images/self_test_b.png")
         print("[Info] Using default test_images/addressbook/index.png vs test_images/addressbook/state3.png")
         img_path_a = "test_images/addressbook/index.png"
-        img_path_b = "test_images/addressbook/state239.png"
+        img_path_b = "test_images/addressbook/index.png"
     else:
         img_path_a = sys.argv[1]
         img_path_b = sys.argv[2]
