@@ -4,7 +4,6 @@ import sys
 import concurrent.futures
 from typing import Literal, Optional
 from langchain_openai import ChatOpenAI
-from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
@@ -18,8 +17,9 @@ OLLAMA_CONFIG = {
     "api_key": "ollama",
     "model": "qwen3-vl:32b",
     "temperature": 0.0, # focus
-    "timeout": 360 # second
-}
+    "timeout": 360, # second
+    "few-shot": False
+}   
 
 
 # --- pydantic ---
@@ -61,27 +61,31 @@ def analyze_screenshots(img_path_a: str, img_path_b: str):
     # build prompt pipeline
     messages = []
     
-    # inject system prompt
-    # messages.append(SystemMessage(content=SYSTEM_PROMPT_TEXT))
+    # few-shot
+    if OLLAMA_CONFIG["few-shot"]:
+        # inject system prompt
+        messages.append(SystemMessage(content=SYSTEM_PROMPT_TEXT))
+        
+        # inject Few-Shot prompt 
+        messages.extend(get_few_shot_messages(ref_dir="reference_images"))
+        
+        # build request message
+        messages.append(HumanMessage(
+            content=[
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{target_a}"}},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{target_b}"}}
+            ]
+        ))
     
-    # inject Few-Shot prompt 
-    # messages.extend(get_few_shot_messages(ref_dir="reference_images"))
-    
-    # build request message
-    messages.append(HumanMessage(
-        content=[
-            {"type": "text", "text": f"{SYSTEM_PROMPT_TEXT}"},
-            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{target_a}"}},
-            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{target_b}"}}
-        ]
-    ))
-
-    # test few shot 
-    # messages.append(HumanMessage(
-    #     content=[
-    #         {"type": "text", "text": f"請問你接收到了幾個範例？"},
-    #     ]
-    # ))
+    # zero-shot
+    else:
+        messages.append(HumanMessage(
+            content=[
+                {"type": "text", "text": f"{SYSTEM_PROMPT_TEXT}"},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{target_a}"}},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{target_b}"}}
+            ]
+        ))
 
     # invoke llm to analyzing
     print(f"[Info] Analyzing {img_path_a} vs {img_path_b} ...")

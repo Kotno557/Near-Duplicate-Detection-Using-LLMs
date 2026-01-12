@@ -12,12 +12,12 @@ You will be given two images (UI screenshots).
 Analyze and determine the relationship between the two screenshots based on functionality and layout, using the classification rules below.
 
 # Classification Rules
-1. [Clone]: Pixels match almost perfectly.
-2. [Near-Duplicate (Nd)]:
-   - Nd1 (Cosmetic): Changes in ads, banners, or background colors. Core widgets are fixed.
-   - Nd2 (Dynamic Data): CRITICAL. The form/layout is identical, but text values differ.
-   - Nd3 (List Expansion): A list/table has more rows, but the columns and data type are identical.
-3. [Distinct]: Functional layout changes, new widgets, or new page states.
+1. [Clone]: No semantic, functional, or perceptual differences between the two pages.
+2. [Near-Duplicate (Nd)] Includes the following fine-grained subcategories:
+   - Nd1 (Cosmetic): Aesthetic changes only (e.g., advertisements, background images).
+   - Nd2 (Dynamic Data): Same template but populated with different dynamic data.
+   - Nd3 (List Expansion): Addition or removal of UI elements, where the functionality already exists in the other page.
+3. [Distinct]: Presence of new functionality or semantic content different.
 
 # Output Requirement
 Please try to output a JSON object in this format:
@@ -31,6 +31,18 @@ If you cannot output JSON, please provide your answer in your preferred format.
 
 def get_few_shot_messages(ref_dir: str = "reference_images"):
     messages = []
+
+    # Clone
+    messages.extend(create_example_pair(
+        ref_dir, "clone_a.png", "clone_b.png",
+        title="Homepage with Background Change",
+        expected_json='''{
+            "classification": "Clone",
+            "sub_type": null,
+            "reasoning": "The two screenshots are visually and functionally identical. All elements, including the navigation bar, product images, pricing text, model selection sidebar (iPhone 16 vs 16 Plus), and the support icon, remain exactly the same without any cosmetic, data, or structural changes."
+        }'''
+    ))
+
 
     # Nd1 (Background Changes)
     messages.extend(create_example_pair(
@@ -106,7 +118,6 @@ def create_example_pair(ref_dir, img_a_name, img_b_name, title, expected_json):
 
     return [
         HumanMessage(content=[
-            {"type": "text", "text": f"Reference Case {FEW_SHOT_COUNTER}: {title}"},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_a}"}},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b}"}}
         ]),
