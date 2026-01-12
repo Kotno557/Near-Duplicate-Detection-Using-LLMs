@@ -1,8 +1,8 @@
 # TODO:
-#   1. 連上 SS.db，迴圈跑所有偵測，建立 llm_nearduplicates table
+#   1. 連上 SS.db，迴圈跑所有偵測，建立 llm_testsubset table
 #   2. 取得 {project_name}, {state_a}, {state_b}
 #   3. 跑 # python main_analyzer.py ../project_name/state_a ../project_name/state_b
-#   4. 把結果儲存在 SS.db 的新 table llm_nearduplicates 裏
+#   4. 把結果儲存在 SS.db 的新 table llm_testsubset 裏
 
 
 import sqlite3
@@ -12,8 +12,8 @@ import main_analyzer
 
 DB_CONFIG: dict[str, str] = {
     "file_path": "./SS.db",
-    "table_origin": "nearduplicates",
-    "table_llm": "llm_nearduplicates"
+    "table_origin": "testsubset",
+    "table_llm": "llm_testsubset"
 }
 MAX_DETECTION_COUNT: int = 1000
 
