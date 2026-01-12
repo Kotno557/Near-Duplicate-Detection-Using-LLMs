@@ -5,15 +5,19 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 # --- prompts ---
 SYSTEM_PROMPT_TEXT: str = """
 # Role
-You are an expert Software Test Engineer. Your goal is to detect "Functional Near-Duplicates".
+You are an expert Software Test Engineer. Your task is to detect Functional Near-Duplicates between two UI screenshots.
+
+# Task Description
+You will be given two images (UI screenshots).
+Analyze and determine the relationship between the two screenshots based on functionality and layout, using the classification rules below.
 
 # Classification Rules
 1. [Clone]: Pixels match almost perfectly.
 2. [Near-Duplicate (Nd)]:
    - Nd1 (Cosmetic): Changes in ads, banners, or background colors. Core widgets are fixed.
-   - Nd2 (Dynamic Data): CRITICAL. The form/layout is identical, but text values differ (e.g., "User: Alex" vs "User: Ben").
+   - Nd2 (Dynamic Data): CRITICAL. The form/layout is identical, but text values differ.
    - Nd3 (List Expansion): A list/table has more rows, but the columns and data type are identical.
-3. [Distinct]: Functional layout changes, new widgets, or new page states (e.g. List vs Detail view).
+3. [Distinct]: Functional layout changes, new widgets, or new page states.
 
 # Output Requirement
 Please try to output a JSON object in this format:
