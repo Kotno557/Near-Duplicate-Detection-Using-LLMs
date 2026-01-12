@@ -62,7 +62,7 @@ def analyze_screenshots(img_path_a: str, img_path_b: str):
     messages = []
     
     # inject system prompt
-    messages.append(SystemMessage(content=SYSTEM_PROMPT_TEXT))
+    # messages.append(SystemMessage(content=SYSTEM_PROMPT_TEXT))
     
     # inject Few-Shot prompt 
     # messages.extend(get_few_shot_messages(ref_dir="reference_images"))
@@ -70,7 +70,7 @@ def analyze_screenshots(img_path_a: str, img_path_b: str):
     # build request message
     messages.append(HumanMessage(
         content=[
-            {"type": "text", "text": f"Now, analyze these two new screenshots."},
+            {"type": "text", "text": f"{SYSTEM_PROMPT_TEXT}"},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{target_a}"}},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{target_b}"}}
         ]
