@@ -19,7 +19,7 @@ OLLAMA_CONFIG = {
     "api_key": "ollama",
     "model": "gemma3:27b",
     "temperature": 0,
-    "timeout": None, 
+    "timeout": 300, 
     "few-shot": True
 }   
 
@@ -47,7 +47,7 @@ def analyze_screenshots(img_path_a: str, img_path_b: str):
         model=OLLAMA_CONFIG["model"],
         temperature=OLLAMA_CONFIG["temperature"],
         timeout=OLLAMA_CONFIG["timeout"],
-        http_client=custom_client,
+        # http_client=custom_client,
         max_retries=0,
         stream_usage=True,
     )
