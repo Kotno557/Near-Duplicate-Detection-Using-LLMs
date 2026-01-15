@@ -3,9 +3,11 @@ import json
 import sys
 import concurrent.futures
 from typing import Literal, Optional
+from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
+import httpx
 
 # --- Systemp prompt & Few-Shot prompt ---
 from prompt_definitions import SYSTEM_PROMPT_TEXT, get_few_shot_messages, encode_image
@@ -13,12 +15,12 @@ from prompt_definitions import SYSTEM_PROMPT_TEXT, get_few_shot_messages, encode
 
 # --- ollama config ---
 OLLAMA_CONFIG = {
-    "base_url": "https://17c6fa445bc9.ngrok-free.app/v1", 
+    "base_url": "http://140.116.8.205:11434/v1", 
     "api_key": "ollama",
-    "model": "qwen3-vl:32b",
-    "temperature": 0.0, # focus
-    "timeout": 360, # second
-    "few-shot": False
+    "model": "gemma3:27b",
+    "temperature": 0,
+    "timeout": None, 
+    "few-shot": True
 }   
 
 
@@ -31,15 +33,12 @@ class ComparisonResult(BaseModel):
 
 # --- main logic ---
 def analyze_screenshots(img_path_a: str, img_path_b: str):
-    print(f"[Info] Connecting to Ollama at \"{OLLAMA_CONFIG['base_url']}\" using {OLLAMA_CONFIG['model']} model ...")
+    print(f"[Info] Connecting to Ollama at \"{OLLAMA_CONFIG['base_url']}\" using {OLLAMA_CONFIG['model']} model use {"Few-Shot" if OLLAMA_CONFIG['few-shot'] else "System Prompt"} ...")
     
-    # ollama llm model (ChatOllama)
-    # llm = ChatOllama(
-    #     base_url=OLLAMA_CONFIG["base_url"],
-    #     model=OLLAMA_CONFIG["model"],
-    #     temperature=OLLAMA_CONFIG["temperature"], # focus
-    #     num_ctx= 32768
-    # )
+    # build no timeout HTTP client
+    custom_client = httpx.Client(
+        timeout=httpx.Timeout(None), # 停用所有連線、讀取、寫入逾時
+    )
 
     # ollama llm model (ChatOpenAI)
     llm = ChatOpenAI(
@@ -48,7 +47,9 @@ def analyze_screenshots(img_path_a: str, img_path_b: str):
         model=OLLAMA_CONFIG["model"],
         temperature=OLLAMA_CONFIG["temperature"],
         timeout=OLLAMA_CONFIG["timeout"],
-        max_retries=0
+        http_client=custom_client,
+        max_retries=0,
+        stream_usage=True,
     )
 
     # read target screenshot
@@ -108,6 +109,10 @@ def analyze_screenshots(img_path_a: str, img_path_b: str):
         elif response_text.startswith("```"):
             response_text = response_text.split("```")[1].split("```")[0].strip()
         
+        # Fix incomplete JSON by adding missing closing brace if needed
+        if response_text.count('{') > response_text.count('}'):
+            response_text += '\n}'
+
         result_dict = json.loads(response_text)
         
         # Add default reasoning if missing

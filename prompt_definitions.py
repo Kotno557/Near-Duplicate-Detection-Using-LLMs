@@ -88,6 +88,69 @@ def get_few_shot_messages(ref_dir: str = "reference_images"):
         }'''
     ))
 
+    # counter-example (wrong classification)
+    messages.extend(create_counter_example(
+        ref_dir, "state480.png", "state1184.png",
+        title="Common Misclassification Example",
+        wrong_json='''{
+            "classification": "Near-Duplicate",
+            "sub_type": "Nd2",
+            "reasoning": "The layout and fields are identical. The first image shows a populated form (with data in the fields), while the second image shows an empty form. This is a case of dynamic data being populated."
+        }''',
+        correct_json='''{
+            "classification": "Distinct",
+            "sub_type": "None",
+            "reasoning": "Although the layouts are similar, these two screenshots represent different functional states. Image A is the 'Create User Account' page used for registering new users, whereas Image B is the 'My User Account' page used for editing existing data. Image B contains functional fields not present in Image A (e.g., 'User picture' file upload, 'Old password' field), and the header navigation shows a completely different login state (Image A is logged out, while Image B is logged in with a user menu)."
+        }'''
+    ))
+
+    messages.extend(create_counter_example(
+        ref_dir, "state1174.png", "state1225.png",
+        title="Common Misclassification Example",
+        wrong_json='''{
+            "classification": "Near-Duplicate",
+            "sub_type": "Nd3",
+            "reasoning": "The core 'Authentication Required' modal is identical. The second image adds a left-hand navigation panel with course options. This is an addition of UI elements, but the core functionality remains the same."
+        }''',
+        correct_json='''{
+            "classification": "Distinct",
+            "sub_type": "None",
+            "reasoning": "The first image features a specific course layout that includes a functional sidebar menu (with options like 'Course description', 'Agenda', 'Document'), whereas the second image is a generic authentication page lacking this navigation structure. The presence of the sidebar in the first image introduces navigation capabilities that are completely absent in the second image."
+        }'''
+    ))
+
+    messages.extend(create_counter_example(
+        ref_dir, "state15.png", "state298.png",
+        title="Common Misclassification Example",
+        wrong_json='''{
+            "classification": "Near-Duplicate",
+            "sub_type": "Nd2",
+            "reasoning": "The core functionality (room booking calendar) remains the same. The calendar has advanced to a different date (July 5, 2019 to September 11, 2019). This is a change in dynamic data, not a new feature."
+        }''',
+        correct_json='''{
+            "classification": "Distinct",
+            "sub_type": "None",
+            "reasoning": "The two screenshots represent distinct functional views and user states within the Meeting Room Booking System. The first image shows a 'Day View' with hourly time slots (07:00 - 18:30) for multiple rooms and indicates an unauthenticated 'Unknown user' state. The second image shows a 'Month View' calendar grid for a specific room and indicates an authenticated 'administrator' state. Additionally, the second image contains a 'Rooms' navigation list (Room 1, Room 2, etc.) that is absent in the first image."
+        }'''
+    ))
+
+    messages.extend(create_counter_example(
+        ref_dir, "state175.png", "state179.png",
+        title="Common Misclassification Example",
+        wrong_json='''{
+            "classification": "Near-Duplicate",
+            "sub_type": "Nd3",
+            "reasoning": "The content is largely the same, but the second image has a longer scrollable section with more 'Why can't I delete/alter a meeting?' entries. This is an expansion of a list, not a new functional element."
+        }''',
+        correct_json='''{
+            "classification": "Clone",
+            "sub_type": "None",
+            "reasoning": "Both screenshots capture the exact same functional state of the 'Help' page within the Meeting Room Booking System. They feature identical layout, FAQ content ('Authentication', 'Making/Altering Meetings', etc.), and user session status ('Unknown user'). The visual and semantic content is indistinguishable."
+        }'''
+    ))
+
+
+
     if not messages:
         print("[Warning] No reference images found. Running in Zero-Shot mode")
     
@@ -118,8 +181,38 @@ def create_example_pair(ref_dir, img_a_name, img_b_name, title, expected_json):
 
     return [
         HumanMessage(content=[
+            {"type": "text", "text": f"Example {FEW_SHOT_COUNTER} : {title}"},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_a}"}},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b}"}}
         ]),
         AIMessage(content=expected_json)
+    ]
+
+def create_counter_example(ref_dir, img_a_name, img_b_name, title, wrong_json, correct_json):
+    """
+    Build a counter-example showing wrong vs correct classification
+    """
+    global FEW_SHOT_COUNTER 
+    FEW_SHOT_COUNTER += 1
+    
+    img_a = encode_image(os.path.join(ref_dir, img_a_name))
+    img_b = encode_image(os.path.join(ref_dir, img_b_name))
+    
+    if not img_a or not img_b:
+        return []
+
+    return [
+        HumanMessage(content=[
+            {"type": "text", "text": f"Counter-Example (Common Mistake) {FEW_SHOT_COUNTER} : {title}"},
+            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_a}"}},
+            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b}"}}
+        ]),
+        AIMessage(content=f"""
+        ## Incorrect Classification (Common Error):
+        {wrong_json}
+
+        ## Correct Classification:
+        {correct_json}
+
+        **Key Lesson**: Always check for functional changes beyond cosmetic differences. New interactive elements or features indicate Distinct classification.""")
     ]
