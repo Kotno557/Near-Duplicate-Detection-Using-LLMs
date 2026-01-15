@@ -15,7 +15,7 @@ DB_CONFIG: dict[str, str] = {
     "table_origin": "testsubset",
     "table_llm": "llm_testsubset"
 }
-MAX_DETECTION_COUNT: int = 1000
+MAX_DETECTION_COUNT: int = 10000
 
 
 # --- code main entry ---
