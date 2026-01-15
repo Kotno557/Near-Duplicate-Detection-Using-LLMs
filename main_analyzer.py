@@ -120,6 +120,13 @@ def analyze_screenshots(img_path_a: str, img_path_b: str):
             result_dict['reasoning'] = f"No reasoning"
 
         result = ComparisonResult(**result_dict)
+
+        # always print debub rawdata
+        print("\033[93m[DEBUG]\033[0m Raw Response:")
+        print("-"*60)
+        print(response)
+        print("="*60 + "\n")
+
         return result
     except Exception as e:
         print(f"\033[91m[Error]\033[0m Analysis Failed: {e}")
