@@ -32,7 +32,6 @@ if __name__ == "__main__":
             state1 TEXT,
             state2 TEXT,
             classification TEXT,
-            sub_type TEXT,
             reasoning TEXT,
             execution_time REAL
         )
@@ -83,15 +82,14 @@ if __name__ == "__main__":
                 # insert result into llm_nearduplicates table
                 cursor.execute(f'''
                     INSERT INTO {DB_CONFIG['table_llm']} 
-                    (id, appname, state1, state2, classification, sub_type, reasoning, execution_time)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    (id, appname, state1, state2, classification, reasoning, execution_time)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     record_id,
                     rows_dict[i]["appname"],
                     rows_dict[i]['state1'],
                     rows_dict[i]['state2'],
                     classification_num,
-                    result['sub_type'] if result['sub_type'] else 'None',
                     result['reasoning'],
                     result['execution_time']
                 ))

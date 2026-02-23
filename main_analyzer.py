@@ -20,7 +20,7 @@ OLLAMA_CONFIG = {
     "model": "gemma3:27b",
     "temperature": 0,
     "timeout": 300, 
-    "few-shot": True
+    "few-shot": False
 }   
 
 
